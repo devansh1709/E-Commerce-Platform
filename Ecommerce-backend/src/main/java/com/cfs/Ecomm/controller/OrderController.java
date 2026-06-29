@@ -18,7 +18,7 @@ public class OrderController {
 
     @PostMapping("/place/{userId}")
     public OrderDTO placeOrder(@PathVariable Long userId, @RequestBody OrderRequest orderRequest){
-        return orderService.placeOrder(userId, orderRequest.getProductQuantities(), orderRequest.getTotalAmount());
+        return orderService.placeOrder(userId, orderRequest.getProductQuantities());
     }
 
     @GetMapping("/all-orders")

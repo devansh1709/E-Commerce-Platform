@@ -2,6 +2,9 @@ package com.cfs.Ecomm.service;
 
 import com.cfs.Ecomm.dto.OrderDTO;
 import com.cfs.Ecomm.dto.OrderItemDTO;
+import com.cfs.Ecomm.enums.OrderStatus;
+import com.cfs.Ecomm.exception.BadRequestException;
+import com.cfs.Ecomm.exception.ResourceNotFoundException;
 import com.cfs.Ecomm.model.OrderItem;
 import com.cfs.Ecomm.model.Orders;
 import com.cfs.Ecomm.model.Product;
@@ -11,7 +14,9 @@ import com.cfs.Ecomm.repo.ProductRepository;
 import com.cfs.Ecomm.repo.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -27,32 +32,68 @@ public class OrderService {
     @Autowired
     private OrderRepository orderRepository;
 
-    public OrderDTO placeOrder(Long userId, Map<Long, Integer> productQuantities, double totalAmount){
-        User user=userRepository.findById(userId)
-                .orElseThrow(()->new RuntimeException("user not found"));
-        Orders order=new Orders();
+    @Transactional
+    public OrderDTO placeOrder(Long userId, Map<Long, Integer> productQuantities) {
+
+        if (productQuantities == null || productQuantities.isEmpty()) {
+            throw new BadRequestException("Cart cannot be empty");
+        }
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+
+        Orders order = new Orders();
         order.setUser(user);
         order.setOrderDate(new Date());
-        order.setStatus("Pending");
-        order.setTotalAmount(totalAmount);
+        order.setStatus(OrderStatus.PENDING);
 
-        List<OrderItem> orderItems=new ArrayList<>();
-        List<OrderItemDTO> orderItemDTOS=new ArrayList<>();
+        List<OrderItem> orderItems = new ArrayList<>();
+        List<OrderItemDTO> orderItemDTOS = new ArrayList<>();
 
-        for (Map.Entry<Long, Integer> entry: productQuantities.entrySet()){
-            Product product=productRepository.findById(entry.getKey())
-                    .orElseThrow(()-> new RuntimeException("Product not found"));
-            OrderItem orderItem=new OrderItem();
+        BigDecimal total = BigDecimal.ZERO;
+
+        for (Map.Entry<Long, Integer> entry : productQuantities.entrySet()) {
+
+            Product product = productRepository.findById(entry.getKey())
+                    .orElseThrow(() -> new ResourceNotFoundException("Product not found"));
+
+            int quantity = entry.getValue();
+
+            if (quantity <= 0) {
+                throw new BadRequestException("Quantity must be greater than zero");
+            }
+
+            total = total.add(
+                    product.getPrice().multiply(BigDecimal.valueOf(quantity))
+            );
+            OrderItem orderItem = new OrderItem();
             orderItem.setOrder(order);
             orderItem.setProduct(product);
-            orderItem.setQuantity(entry.getValue());
-            orderItems.add(orderItem);
-            orderItemDTOS.add(new OrderItemDTO(product.getName(), product.getPrice(), entry.getValue()));
-        }
-        order.setOrderItems(orderItems);
-        Orders saveOrder=orderRepository.save(order);
-        return new OrderDTO(saveOrder.getId(), saveOrder.getTotalAmount(), saveOrder.getStatus(), saveOrder.getOrderDate(), orderItemDTOS);
+            orderItem.setQuantity(quantity);
 
+            orderItems.add(orderItem);
+
+            orderItemDTOS.add(
+                    new OrderItemDTO(
+                            product.getName(),
+                            product.getPrice(),
+                            quantity
+                    )
+            );
+        }
+
+        order.setTotalAmount(total);
+        order.setOrderItems(orderItems);
+
+        Orders savedOrder = orderRepository.save(order);
+
+        return new OrderDTO(
+                savedOrder.getId(),
+                savedOrder.getTotalAmount(),
+                savedOrder.getStatus(),
+                savedOrder.getOrderDate(),
+                orderItemDTOS
+        );
     }
 
     public List<OrderDTO> getAllOrders(){

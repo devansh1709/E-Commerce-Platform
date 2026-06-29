@@ -7,8 +7,7 @@ import java.util.Map;
 
 public class OrderRequest {
 
-    private Map<Long,Integer> productQuantities;
-    private double totalAmount;
+    private Map<Long, Integer> productQuantities;
 
     public Map<Long, Integer> getProductQuantities() {
         return productQuantities;
@@ -18,11 +17,4 @@ public class OrderRequest {
         this.productQuantities = productQuantities;
     }
 
-    public double getTotalAmount() {
-        return totalAmount;
-    }
-
-    public void setTotalAmount(double totalAmount) {
-        this.totalAmount = totalAmount;
-    }
 }

@@ -1,19 +1,22 @@
 package com.cfs.Ecomm.dto;
 
+import com.cfs.Ecomm.enums.OrderStatus;
+
+import java.math.BigDecimal;
 import java.util.Date;
 import java.util.List;
 
 public class OrderDTO {
 
     private Long id;
-    private double totalAmount;
-    private String status;
+    private BigDecimal totalAmount;
+    private OrderStatus status;
     private Date orderDate;
     private String userName;
     private String email;
     private List<OrderItemDTO> orderItems;
 
-    public OrderDTO(Long id, double totalAmount, String status, Date orderDate, String userName, String email, List<OrderItemDTO> orderItems) {
+    public OrderDTO(Long id, BigDecimal totalAmount, OrderStatus status, Date orderDate, String userName, String email, List<OrderItemDTO> orderItems) {
         this.id = id;
         this.totalAmount = totalAmount;
         this.status = status;
@@ -23,7 +26,7 @@ public class OrderDTO {
         this.orderItems = orderItems;
     }
 
-    public OrderDTO(Long id, double totalAmount, String status, Date orderDate, List<OrderItemDTO> orderItems) {
+    public OrderDTO(Long id, BigDecimal totalAmount, OrderStatus status, Date orderDate, List<OrderItemDTO> orderItems) {
         this.id = id;
         this.totalAmount = totalAmount;
         this.status = status;
@@ -39,19 +42,19 @@ public class OrderDTO {
         this.id = id;
     }
 
-    public double getTotalAmount() {
+    public BigDecimal getTotalAmount() {
         return totalAmount;
     }
 
-    public void setTotalAmount(double totalAmount) {
+    public void setTotalAmount(BigDecimal totalAmount) {
         this.totalAmount = totalAmount;
     }
 
-    public String getStatus() {
+    public OrderStatus getStatus() {
         return status;
     }
 
-    public void setStatus(String status) {
+    public void setStatus(OrderStatus status) {
         this.status = status;
     }
 

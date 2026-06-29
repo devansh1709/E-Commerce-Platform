@@ -1,8 +1,10 @@
 package com.cfs.Ecomm.model;
 
+import com.cfs.Ecomm.enums.OrderStatus;
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import jakarta.persistence.*;
 
+import java.math.BigDecimal;
 import java.util.Date;
 import java.util.List;
 
@@ -16,8 +18,10 @@ public class Orders {
     @ManyToOne
     @JsonBackReference
     private User user;
-    private double totalAmount;
-    private String status;
+    private BigDecimal totalAmount;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private OrderStatus status;
     private Date orderDate;
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL)
@@ -39,19 +43,19 @@ public class Orders {
         this.user = user;
     }
 
-    public double getTotalAmount() {
+    public BigDecimal getTotalAmount() {
         return totalAmount;
     }
 
-    public void setTotalAmount(double totalAmount) {
+    public void setTotalAmount(BigDecimal totalAmount) {
         this.totalAmount = totalAmount;
     }
 
-    public String getStatus() {
+    public OrderStatus getStatus() {
         return status;
     }
 
-    public void setStatus(String status) {
+    public void setStatus(OrderStatus status) {
         this.status = status;
     }
 

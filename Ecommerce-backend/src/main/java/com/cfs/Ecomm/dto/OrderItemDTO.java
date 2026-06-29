@@ -1,12 +1,14 @@
 package com.cfs.Ecomm.dto;
 
+import java.math.BigDecimal;
+
 public class OrderItemDTO {
 
     private String productName;
-    private double productPrice;
+    private BigDecimal productPrice;
     private int quantity;
 
-    public OrderItemDTO(String productName, double productPrice, int quantity) {
+    public OrderItemDTO(String productName, BigDecimal productPrice, int quantity) {
         this.productName = productName;
         this.productPrice = productPrice;
         this.quantity = quantity;
@@ -20,11 +22,11 @@ public class OrderItemDTO {
         this.productName = productName;
     }
 
-    public double getProductPrice() {
+    public BigDecimal getProductPrice() {
         return productPrice;
     }
 
-    public void setProductPrice(double productPrice) {
+    public void setProductPrice(BigDecimal productPrice) {
         this.productPrice = productPrice;
     }
 
