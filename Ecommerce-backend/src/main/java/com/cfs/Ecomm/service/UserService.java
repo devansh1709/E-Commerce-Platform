@@ -1,8 +1,12 @@
 package com.cfs.Ecomm.service;
 
+import com.cfs.Ecomm.dto.AuthResponse;
+import com.cfs.Ecomm.exception.BadRequestException;
 import com.cfs.Ecomm.model.User;
 import com.cfs.Ecomm.repo.UserRepository;
+import com.cfs.Ecomm.security.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -12,23 +16,38 @@ public class UserService {
 
     @Autowired
     private UserRepository userRepository;
+    @Autowired
+    private BCryptPasswordEncoder passwordEncoder;
+    @Autowired
+    private JwtUtil jwtUtil;
 
-    public User registerUser(User user){
-        User newUser=userRepository.save(user);
-        System.out.println("User added...");
-        return newUser;
-    }
 
-    public User loginUser(String email, String password){
-        User user=userRepository.findByEmail(email);
-        if(user!=null && user.getPassword().equals(password)) {
-            return user;
+    public AuthResponse registerUser(User user) {
+
+        if (userRepository.findByEmail(user.getEmail()) != null) {
+            throw new BadRequestException("Email already registered");
         }
-        return null;
+
+        user.setPassword(passwordEncoder.encode(user.getPassword()));
+
+        User saved = userRepository.save(user);
+
+        String token = jwtUtil.generateToken(saved.getEmail());
+
+        return new AuthResponse(token, saved.getId(), saved.getName(), saved.getEmail());
     }
 
-    public List<User> getAllUsers(){
-        return userRepository.findAll();
+    public AuthResponse loginUser(String email, String password) {
+
+        User user = userRepository.findByEmail(email);
+
+        if (user == null || !passwordEncoder.matches(password, user.getPassword())) {
+            throw new BadRequestException("Invalid email or password");
+        }
+
+        String token = jwtUtil.generateToken(user.getEmail());
+
+        return new AuthResponse(token, user.getId(), user.getName(), user.getEmail());
     }
 
 }

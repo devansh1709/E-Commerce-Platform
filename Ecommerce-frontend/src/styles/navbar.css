@@ -89,3 +89,30 @@
   .nav-link { display: none; }
   .cart-btn { padding: 8px 12px; }
 }
+
+.nav-user {
+  font-size: 14px;
+  color: white;
+  padding: 8px 10px;
+}
+
+.nav-logout {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: #ff6b6b;
+  font-size: 15px;
+}
+
+.nav-logout:hover {
+  color: #ff3b30;
+}
+
+.nav-button {
+    background: transparent;
+    border: none;
+    color: inherit;
+    cursor: pointer;
+    font: inherit;
+    padding: 8px 12px;
+}
