@@ -1,15 +1,16 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
 import { useAuth } from '../context/AuthContext'
 import '../styles/auth.css'
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 
 export default function Login() {
   const { login } = useAuth()
-  const navigate   = useNavigate()
 
   const [form,    setForm]    = useState({ email: '', password: '' })
   const [error,   setError]   = useState(null)
   const [loading, setLoading] = useState(false)
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const handleChange = (e) =>
     setForm(f => ({ ...f, [e.target.name]: e.target.value }))
@@ -19,8 +20,11 @@ export default function Login() {
     setError(null)
     setLoading(true)
     try {
-      await login(form.email, form.password)
-      navigate('/')          // redirect to home on success
+      await login(form.email, form.password);
+
+const from = location.state?.from || "/";
+
+navigate(from, { replace: true });
     } catch (err) {
       setError(err.message || 'Invalid email or password')
     } finally {

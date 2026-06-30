@@ -1,19 +1,52 @@
-import { Link } from 'react-router-dom'
+import { useAuth } from '../context/AuthContext';
 import { useCart } from '../hooks/useCart'
 import CartTable from '../components/CartTable'
+import { orderService } from '../services/productService';
+import { Link, useNavigate } from 'react-router-dom';
 import '../styles/cart.css'
 
 const formatPrice = (price) => `₹${Number(price).toLocaleString('en-IN')}`
 
 export default function Cart() {
-  const { cart, totalAmount, clearCart } = useCart()
+  const { cart, totalAmount, clearCart, showToast } = useCart()
+  const { isLoggedIn } = useAuth();
+  const navigate = useNavigate();
 
-  const handleCheckout = () => {
-    // TODO: integrate payment gateway (Razorpay / Stripe)
-    alert('Proceeding to payment...')
-  }
 
-  // Empty cart state
+  const handleCheckout = async () => {
+
+    if (!isLoggedIn) {
+        showToast("Please login to continue to checkout.");
+        navigate("/login", {
+          state: {
+            from: "/cart"
+          }
+      });
+        return;
+    }
+
+    try {
+
+        const productQuantities = {};
+
+        cart.forEach(item => {
+            productQuantities[item.id] = item.quantity;
+        });
+
+        await orderService.placeOrder(productQuantities);
+
+        showToast("Order placed successfully. Thank you for shopping!");
+
+        clearCart();
+
+        navigate("/", { replace: true });
+    } catch (err) {
+        showToast(
+          err.message || "Failed to place order."
+        );
+    }
+  };
+
   if (cart.length === 0) {
     return (
       <div className="cart-page">

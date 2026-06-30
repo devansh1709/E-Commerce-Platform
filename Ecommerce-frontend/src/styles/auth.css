@@ -114,3 +114,45 @@
 }
 
 .auth-switch a:hover { text-decoration: underline; }
+
+.password-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.password-wrapper input {
+    width: 100%;
+    padding-right: 70px;
+}
+
+.toggle-password {
+    position: absolute;
+    right: 12px;
+    background: transparent;
+    border: none;
+    color: #ff6600;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.toggle-password:hover {
+    color: #e65c00;
+}
+
+.toggle-password:focus {
+    outline: none;
+}
+
+.password-warning {
+    color: orange;
+    font-weight: 500;
+}
+
+.auth-link-disabled {
+    color: #999;
+    cursor: not-allowed;
+    text-decoration: none;
+    pointer-events: none;
+}
