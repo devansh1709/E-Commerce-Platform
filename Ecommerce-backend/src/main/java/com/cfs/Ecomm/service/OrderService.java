@@ -12,25 +12,29 @@ import com.cfs.Ecomm.model.User;
 import com.cfs.Ecomm.repo.OrderRepository;
 import com.cfs.Ecomm.repo.ProductRepository;
 import com.cfs.Ecomm.repo.UserRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
 public class OrderService {
 
-    @Autowired
-    private UserRepository userRepository;
+    private final UserRepository userRepository;
+    private final ProductRepository productRepository;
+    private final OrderRepository orderRepository;
 
-    @Autowired
-    private ProductRepository productRepository;
+    public OrderService(UserRepository userRepository,
+                        ProductRepository productRepository,
+                        OrderRepository orderRepository) {
 
-    @Autowired
-    private OrderRepository orderRepository;
+        this.userRepository = userRepository;
+        this.productRepository = productRepository;
+        this.orderRepository = orderRepository;
+    }
 
     @Transactional
     public OrderDTO placeOrder(Long userId, Map<Long, Integer> productQuantities) {
@@ -44,7 +48,7 @@ public class OrderService {
 
         Orders order = new Orders();
         order.setUser(user);
-        order.setOrderDate(new Date());
+        order.setOrderDate(LocalDateTime.now());
         order.setStatus(OrderStatus.PENDING);
 
         List<OrderItem> orderItems = new ArrayList<>();
@@ -58,6 +62,16 @@ public class OrderService {
                     .orElseThrow(() -> new ResourceNotFoundException("Product not found"));
 
             int quantity = entry.getValue();
+
+            if (product.getStock() < quantity) {
+                throw new BadRequestException(
+                        "Insufficient stock for: " + product.getName()
+                );
+            }
+
+            product.setStock(product.getStock() - quantity);
+
+            productRepository.save(product);
 
             if (quantity <= 0) {
                 throw new BadRequestException("Quantity must be greater than zero");
@@ -119,11 +133,9 @@ public class OrderService {
     }
 
     public List<OrderDTO> getOrderByUser(Long userId){
-        Optional<User> userOp = userRepository.findById(userId);
-        if(userOp.isEmpty()){
-            throw new RuntimeException("user not found");
-        }
-        User user=userOp.get();
+        User user = userRepository.findById(userId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("User not found"));
         List<Orders> ordersList=orderRepository.findByUser(user);
         return ordersList.stream().map(this::convertToDTO).collect(Collectors.toList());
     }

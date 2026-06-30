@@ -35,15 +35,19 @@ public class SecurityConfig {
             .sessionManagement(session ->
                 session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
 
-            .authorizeHttpRequests(auth -> auth
+                .authorizeHttpRequests(auth -> auth
 
-                .requestMatchers(HttpMethod.POST, "/users/register").permitAll()
-                .requestMatchers(HttpMethod.POST, "/users/login").permitAll()
-                .requestMatchers(HttpMethod.GET,  "/products").permitAll()
-                .requestMatchers(HttpMethod.GET,  "/products/**").permitAll()
+                        .requestMatchers("/users/login", "/users/register").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/products/**").permitAll()
 
-                .anyRequest().authenticated()
-            )
+                        .requestMatchers(HttpMethod.POST, "/products").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.PUT, "/products/**").hasRole("ADMIN")
+                        .requestMatchers(HttpMethod.DELETE, "/products/**").hasRole("ADMIN")
+
+                        .requestMatchers(HttpMethod.GET, "/orders/all-orders").hasRole("ADMIN")
+
+                        .anyRequest().authenticated()
+                )
 
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
 

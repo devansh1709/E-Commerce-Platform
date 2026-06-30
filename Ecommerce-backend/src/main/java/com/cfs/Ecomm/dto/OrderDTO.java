@@ -3,7 +3,7 @@ package com.cfs.Ecomm.dto;
 import com.cfs.Ecomm.enums.OrderStatus;
 
 import java.math.BigDecimal;
-import java.util.Date;
+import java.time.LocalDateTime;
 import java.util.List;
 
 public class OrderDTO {
@@ -11,12 +11,12 @@ public class OrderDTO {
     private Long id;
     private BigDecimal totalAmount;
     private OrderStatus status;
-    private Date orderDate;
+    private LocalDateTime orderDate;
     private String userName;
     private String email;
     private List<OrderItemDTO> orderItems;
 
-    public OrderDTO(Long id, BigDecimal totalAmount, OrderStatus status, Date orderDate, String userName, String email, List<OrderItemDTO> orderItems) {
+    public OrderDTO(Long id, BigDecimal totalAmount, OrderStatus status, LocalDateTime orderDate, String userName, String email, List<OrderItemDTO> orderItems) {
         this.id = id;
         this.totalAmount = totalAmount;
         this.status = status;
@@ -26,7 +26,7 @@ public class OrderDTO {
         this.orderItems = orderItems;
     }
 
-    public OrderDTO(Long id, BigDecimal totalAmount, OrderStatus status, Date orderDate, List<OrderItemDTO> orderItems) {
+    public OrderDTO(Long id, BigDecimal totalAmount, OrderStatus status, LocalDateTime orderDate, List<OrderItemDTO> orderItems) {
         this.id = id;
         this.totalAmount = totalAmount;
         this.status = status;
@@ -58,11 +58,11 @@ public class OrderDTO {
         this.status = status;
     }
 
-    public Date getOrderDate() {
+    public LocalDateTime getOrderDate() {
         return orderDate;
     }
 
-    public void setOrderDate(Date orderDate) {
+    public void setOrderDate(LocalDateTime orderDate) {
         this.orderDate = orderDate;
     }
 

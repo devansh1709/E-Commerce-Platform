@@ -41,26 +41,26 @@ public class JwtFilter extends OncePerRequestFilter {
             User user = userRepository.findByEmail(email);
 
             if (user != null) {
-                // Build an Authentication object with ROLE_USER authority
                 var auth = new UsernamePasswordAuthenticationToken(
                         user,
                         null,
-                        List.of(new SimpleGrantedAuthority("ROLE_USER"))
+                        List.of(
+                                new SimpleGrantedAuthority(
+                                        "ROLE_" + user.getRole()
+                                )
+                        )
                 );
-                // Register the user as authenticated for this request
                 SecurityContextHolder.getContext().setAuthentication(auth);
             }
         }
 
-        // Always continue the filter chain — even if not authenticated
         filterChain.doFilter(request, response);
     }
 
-    // Pulls the raw token string from "Authorization: Bearer <token>"
     private String extractToken(HttpServletRequest request) {
         String header = request.getHeader("Authorization");
         if (StringUtils.hasText(header) && header.startsWith("Bearer ")) {
-            return header.substring(7);  // strip "Bearer "
+            return header.substring(7);
         }
         return null;
     }
