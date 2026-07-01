@@ -1,19 +1,31 @@
 package com.cfs.Ecomm.dto;
 
+import com.cfs.Ecomm.enums.Role;
+
 public class AuthResponse {
 
     private String token;
     private Long   userId;
     private String name;
     private String email;
+    private Role role;
 
     public AuthResponse() {}
 
-    public AuthResponse(String token, Long userId, String name, String email) {
+    public Role getRole() {
+        return role;
+    }
+
+    public void setRole(Role role) {
+        this.role = role;
+    }
+
+    public AuthResponse(String token, Long userId, String name, String email, Role role) {
         this.token  = token;
         this.userId = userId;
         this.name   = name;
         this.email  = email;
+        this.role = role;
     }
 
     public String getToken()  { return token;  }

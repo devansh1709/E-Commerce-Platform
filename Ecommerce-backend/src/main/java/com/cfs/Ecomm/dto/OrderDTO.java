@@ -26,14 +26,6 @@ public class OrderDTO {
         this.orderItems = orderItems;
     }
 
-    public OrderDTO(Long id, BigDecimal totalAmount, OrderStatus status, LocalDateTime orderDate, List<OrderItemDTO> orderItems) {
-        this.id = id;
-        this.totalAmount = totalAmount;
-        this.status = status;
-        this.orderDate = orderDate;
-        this.orderItems = orderItems;
-    }
-
     public Long getId() {
         return id;
     }

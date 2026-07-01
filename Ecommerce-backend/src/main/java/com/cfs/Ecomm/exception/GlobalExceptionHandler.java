@@ -47,20 +47,21 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(error, HttpStatus.BAD_REQUEST);
     }
 
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<ErrorResponse> handleException(
-            Exception ex,
-            HttpServletRequest request) {
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<Map<String,String>> handleValidation(
+            MethodArgumentNotValidException ex){
 
-        ErrorResponse error = new ErrorResponse(
-                LocalDateTime.now(),
-                HttpStatus.INTERNAL_SERVER_ERROR.value(),
-                "Internal Server Error",
-                ex.getMessage(),
-                request.getRequestURI()
-        );
+        Map<String,String> errors = new HashMap<>();
 
-        return new ResponseEntity<>(error, HttpStatus.INTERNAL_SERVER_ERROR);
+        ex.getBindingResult()
+                .getFieldErrors()
+                .forEach(error ->
+                        errors.put(
+                                error.getField(),
+                                error.getDefaultMessage()
+                        ));
+
+        return ResponseEntity.badRequest().body(errors);
     }
 
     @ExceptionHandler(ObjectOptimisticLockingFailureException.class)
@@ -79,20 +80,19 @@ public class GlobalExceptionHandler {
         return new ResponseEntity<>(error, HttpStatus.CONFLICT);
     }
 
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<Map<String,String>> handleValidation(
-            MethodArgumentNotValidException ex){
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ErrorResponse> handleException(
+            Exception ex,
+            HttpServletRequest request) {
 
-        Map<String,String> errors = new HashMap<>();
+        ErrorResponse error = new ErrorResponse(
+                LocalDateTime.now(),
+                HttpStatus.INTERNAL_SERVER_ERROR.value(),
+                "Internal Server Error",
+                ex.getMessage(),
+                request.getRequestURI()
+        );
 
-        ex.getBindingResult()
-                .getFieldErrors()
-                .forEach(error ->
-                        errors.put(
-                                error.getField(),
-                                error.getDefaultMessage()
-                        ));
-
-        return ResponseEntity.badRequest().body(errors);
+        return new ResponseEntity<>(error, HttpStatus.INTERNAL_SERVER_ERROR);
     }
 }

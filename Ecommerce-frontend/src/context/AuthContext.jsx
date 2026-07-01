@@ -31,7 +31,6 @@ export function AuthProvider({ children }) {
 
   const login = useCallback(async (email, password) => {
     const data = await userService.login({ email, password })
-    // data = { token, userId, name, email }
     persist(data)
     return data
   }, [])
@@ -43,8 +42,11 @@ export function AuthProvider({ children }) {
   }, [])
 
   const logout = useCallback(() => {
-    persist(null)
-  }, [])
+    persist(null);
+
+    localStorage.removeItem("shoplane_cart");
+    localStorage.removeItem("checkout_data");
+  }, []);
 
   return (
     <AuthContext.Provider value={{ user, login, register, logout, isLoggedIn: !!user }}>

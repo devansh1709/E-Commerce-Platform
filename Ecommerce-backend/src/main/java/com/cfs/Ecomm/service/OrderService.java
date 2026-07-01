@@ -106,6 +106,8 @@ public class OrderService {
                 savedOrder.getTotalAmount(),
                 savedOrder.getStatus(),
                 savedOrder.getOrderDate(),
+                user.getName(),
+                user.getEmail(),
                 orderItemDTOS
         );
     }
