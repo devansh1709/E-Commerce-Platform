@@ -1,9 +1,9 @@
 import { useAuth } from '../context/AuthContext';
 import { useCart } from '../hooks/useCart'
 import CartTable from '../components/CartTable'
-import { orderService } from '../services/productService';
 import { Link, useNavigate } from 'react-router-dom';
 import '../styles/cart.css'
+import {productService, orderService} from "../services/productService";
 
 const formatPrice = (price) => `₹${Number(price).toLocaleString('en-IN')}`
 
@@ -32,6 +32,22 @@ export default function Cart() {
         cart.forEach(item => {
             productQuantities[item.id] = item.quantity;
         });
+
+        for (const item of cart) {
+
+            const latestProduct =
+                await productService.getProductById(item.id);
+
+            if (item.quantity > latestProduct.stock) {
+
+                showToast(
+                    `${item.name} now has only ${latestProduct.stock} item(s) available.`
+                );
+
+                return;
+            }
+
+        }
 
         await orderService.placeOrder(productQuantities);
 

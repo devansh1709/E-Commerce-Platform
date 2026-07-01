@@ -67,6 +67,26 @@ export default function Navbar() {
                 👤 {user.name}
               </span>
 
+              <Link
+                to="/orders"
+                className={`nav-link ${
+                  pathname === "/orders" ? "active" : ""
+                }`}
+              >
+                My Orders
+              </Link>
+
+              {user?.role === "ADMIN" && (
+                <Link
+                  to="/admin"
+                  className={`nav-link ${
+                    pathname === "/admin" ? "active" : ""
+                  }`}
+                >
+                  Admin
+                </Link>
+              )}
+
               <button
                 className="nav-link nav-logout"
                 onClick={handleLogout}

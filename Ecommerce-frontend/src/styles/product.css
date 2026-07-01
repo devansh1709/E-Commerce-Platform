@@ -101,3 +101,27 @@
   0%, 100% { opacity: 1; }
   50%       { opacity: 0.4; }
 }
+
+.product-stock {
+    margin: 8px 0 12px;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.in-stock {
+    color: #16a34a;
+}
+
+.low-stock {
+    color: #d97706;
+}
+
+.out-of-stock {
+    color: #dc2626;
+}
+
+.add-btn:disabled {
+    background: #bdbdbd;
+    cursor: not-allowed;
+    opacity: 0.8;
+}

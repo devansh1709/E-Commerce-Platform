@@ -11,10 +11,16 @@ export default function ProductCard({ product }) {
   const [added, setAdded] = useState(false)
 
   const handleAdd = () => {
-    addToCart(product)
-    setAdded(true)
-    setTimeout(() => setAdded(false), 1200)
+
+  if (product.stock === 0) {
+    return;
   }
+
+  addToCart(product);
+  setAdded(true);
+
+  setTimeout(() => setAdded(false), 1200);
+}
 
   const fallbackImg = `https://picsum.photos/seed/${product.id}/400/300`
 
@@ -34,11 +40,31 @@ export default function ProductCard({ product }) {
         <h3 className="product-name">{product.name}</h3>
         <p className="product-desc">{product.description}</p>
         <p className="product-price">{formatPrice(product.price)}</p>
+        <p
+          className={`product-stock ${
+            product.stock === 0
+              ? "out-of-stock"
+              : product.stock <= 5
+              ? "low-stock"
+              : "in-stock"
+          }`}
+        >
+          {product.stock === 0
+            ? "Out of Stock"
+            : product.stock <= 5
+            ? `Only ${product.stock} left`
+            : `In Stock (${product.stock})`}
+        </p>
         <button
           className={`add-btn ${added ? 'add-btn--added' : ''}`}
           onClick={handleAdd}
+          disabled={product.stock === 0}
         >
-          {added ? '✓ Added!' : 'Add to Cart'}
+          {product.stock === 0
+            ? "Out of Stock"
+            : added
+            ? "✓ Added!"
+            : "Add to Cart"}
         </button>
       </div>
     </div>
