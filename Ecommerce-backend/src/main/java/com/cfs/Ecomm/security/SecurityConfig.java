@@ -39,13 +39,16 @@ public class SecurityConfig {
 
                         .requestMatchers("/users/login", "/users/register").permitAll()
                         .requestMatchers(HttpMethod.GET, "/products/**").permitAll()
-
+                        .requestMatchers(
+                                "/swagger-ui.html",
+                                "/swagger-ui/**",
+                                "/v3/api-docs",
+                                "/v3/api-docs/**"
+                        ).permitAll()
                         .requestMatchers(HttpMethod.POST, "/products").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.PUT, "/products/**").hasRole("ADMIN")
                         .requestMatchers(HttpMethod.DELETE, "/products/**").hasRole("ADMIN")
-
                         .requestMatchers(HttpMethod.GET, "/orders/all-orders").hasRole("ADMIN")
-
                         .anyRequest().authenticated()
                 )
 

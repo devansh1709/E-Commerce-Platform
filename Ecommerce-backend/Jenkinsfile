@@ -1,0 +1,45 @@
+pipeline {
+    agent any
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Build') {
+            steps {
+                sh 'chmod +x mvnw'
+                sh './mvnw clean compile -B'
+            }
+        }
+
+        stage('Test') {
+            steps {
+                sh './mvnw test -B'
+            }
+            post {
+                always {
+                    junit 'target/surefire-reports/*.xml'
+                }
+            }
+        }
+
+        stage('Package') {
+            steps {
+                sh './mvnw package -DskipTests -B'
+            }
+        }
+    }
+
+    post {
+        success {
+            echo 'CI pipeline completed successfully!'
+        }
+
+        failure {
+            echo 'Pipeline failed. Check the failed stage logs.'
+        }
+    }
+}
