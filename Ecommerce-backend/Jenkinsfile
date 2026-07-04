@@ -1,6 +1,11 @@
 pipeline {
     agent any
 
+    environment {
+        IMAGE_NAME = 'shoplane-backend'
+        IMAGE_TAG = "${BUILD_NUMBER}"
+    }
+
     stages {
         stage('Build') {
             steps {
@@ -29,6 +34,14 @@ pipeline {
             steps {
                 dir('Ecommerce-backend') {
                     sh './mvnw package -DskipTests -B'
+                }
+            }
+        }
+
+        stage('Docker Build') {
+            steps {
+                dir('Ecommerce-backend') {
+                    sh 'docker build -t ${IMAGE_NAME}:${IMAGE_TAG} -t ${IMAGE_NAME}:latest .'
                 }
             }
         }
