@@ -18,6 +18,7 @@ import com.cfs.Ecomm.client.PaymentGatewayClient;
 import com.cfs.Ecomm.dto.PaymentConfirmationRequest;
 import com.cfs.Ecomm.dto.PaymentRequest;
 import com.cfs.Ecomm.dto.PaymentResponse;
+import com.cfs.Ecomm.exception.ForbiddenException;
 import com.razorpay.Utils;
 import org.springframework.beans.factory.annotation.Value;
 
@@ -159,11 +160,20 @@ public class OrderService {
     @Transactional
     public OrderDTO confirmPayment(
             Long orderId,
+            Long userId,
             PaymentConfirmationRequest request) {
 
         Orders order = orderRepository.findById(orderId)
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Order not found"));
+
+        if (order.getUser() == null ||
+                !order.getUser().getId().equals(userId)) {
+
+            throw new ForbiddenException(
+                    "You do not have access to this order"
+            );
+        }
 
         if (order.getRazorpayOrderId() == null ||
                 !order.getRazorpayOrderId().equals(request.getRazorpayOrderId())) {
@@ -218,11 +228,21 @@ public class OrderService {
     }
 
     @Transactional
-    public OrderDTO cancelPendingOrder(Long orderId) {
+    public OrderDTO cancelPendingOrder(
+            Long orderId,
+            Long userId) {
 
         Orders order = orderRepository.findById(orderId)
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Order not found"));
+
+        if (order.getUser() == null ||
+                !order.getUser().getId().equals(userId)) {
+
+            throw new ForbiddenException(
+                    "You do not have access to this order"
+            );
+        }
 
         if (order.getStatus() != OrderStatus.PENDING) {
             throw new BadRequestException(

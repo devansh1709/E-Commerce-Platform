@@ -5,6 +5,7 @@ import com.cfs.Ecomm.dto.PaymentRequest;
 import com.cfs.Ecomm.dto.PaymentResponse;
 import com.cfs.Ecomm.enums.OrderStatus;
 import com.cfs.Ecomm.exception.BadRequestException;
+import com.cfs.Ecomm.exception.ForbiddenException;
 import com.cfs.Ecomm.exception.ResourceNotFoundException;
 import com.cfs.Ecomm.model.OrderItem;
 import com.cfs.Ecomm.model.Orders;
@@ -212,7 +213,7 @@ class OrderServiceTest {
                 new PaymentConfirmationRequest();
 
         assertThatThrownBy(() ->
-                orderService.confirmPayment(999L, request))
+                orderService.confirmPayment(999L, 101L, request))
                 .isInstanceOf(ResourceNotFoundException.class)
                 .hasMessageContaining("Order not found");
 
@@ -239,7 +240,7 @@ class OrderServiceTest {
         request.setRazorpaySignature("invalid_signature");
 
         OrderDTO result =
-                orderService.confirmPayment(100L, request);
+                orderService.confirmPayment(100L, 1L, request);
 
         assertThat(result.getStatus())
                 .isEqualTo(OrderStatus.FAILED);
@@ -268,7 +269,7 @@ class OrderServiceTest {
         request.setRazorpaySignature("some_signature");
 
         assertThatThrownBy(() ->
-                orderService.confirmPayment(100L, request))
+                orderService.confirmPayment(100L, 1L, request))
                 .isInstanceOf(BadRequestException.class)
                 .hasMessageContaining(
                         "Razorpay order ID does not match"
@@ -318,7 +319,7 @@ class OrderServiceTest {
         request.setRazorpaySignature(validSignature);
 
         OrderDTO result =
-                orderService.confirmPayment(100L, request);
+                orderService.confirmPayment(100L, 1L, request);
 
         assertThat(result.getStatus())
                 .isEqualTo(OrderStatus.PAID);
@@ -327,6 +328,65 @@ class OrderServiceTest {
                 .isEqualTo("pay_test_456");
 
         verify(orderRepository).save(order);
+    }
+
+    @Test
+    void confirmPayment_rejectsDifferentUser() {
+        User owner = user(
+                1L,
+                "Aarav",
+                "aarav@example.com"
+        );
+
+        Orders order = orderWithOneItem(owner);
+        order.setRazorpayOrderId("order_test_123");
+
+        when(orderRepository.findById(100L))
+                .thenReturn(Optional.of(order));
+
+        PaymentConfirmationRequest request =
+                new PaymentConfirmationRequest();
+
+        assertThatThrownBy(() ->
+                orderService.confirmPayment(
+                        100L,
+                        999L,
+                        request
+                )
+        )
+                .isInstanceOf(ForbiddenException.class)
+                .hasMessageContaining(
+                        "You do not have access to this order"
+                );
+
+        verify(orderRepository, never()).save(any());
+    }
+
+    @Test
+    void cancelPendingOrder_rejectsDifferentUser() {
+        User owner = user(
+                1L,
+                "Aarav",
+                "aarav@example.com"
+        );
+
+        Orders order = orderWithOneItem(owner);
+
+        when(orderRepository.findById(100L))
+                .thenReturn(Optional.of(order));
+
+        assertThatThrownBy(() ->
+                orderService.cancelPendingOrder(
+                        100L,
+                        999L
+                )
+        )
+                .isInstanceOf(ForbiddenException.class)
+                .hasMessageContaining(
+                        "You do not have access to this order"
+                );
+
+        verify(orderRepository, never()).save(any());
     }
 
     private static User user(Long id, String name, String email) {

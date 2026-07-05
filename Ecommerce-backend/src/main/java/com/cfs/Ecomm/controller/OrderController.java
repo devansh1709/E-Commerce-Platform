@@ -48,21 +48,29 @@ public class OrderController {
 
     @PostMapping("/{orderId}/confirm-payment")
     public ResponseEntity<OrderDTO> confirmPayment(
+            @AuthenticationPrincipal User currentUser,
             @PathVariable Long orderId,
             @RequestBody PaymentConfirmationRequest request) {
 
-        OrderDTO confirmedOrder =
-                orderService.confirmPayment(orderId, request);
-
-        return ResponseEntity.ok(confirmedOrder);
+        return ResponseEntity.ok(
+                orderService.confirmPayment(
+                        orderId,
+                        currentUser.getId(),
+                        request
+                )
+        );
     }
 
     @PostMapping("/{orderId}/cancel-payment")
     public ResponseEntity<OrderDTO> cancelPayment(
+            @AuthenticationPrincipal User currentUser,
             @PathVariable Long orderId) {
 
         return ResponseEntity.ok(
-                orderService.cancelPendingOrder(orderId)
+                orderService.cancelPendingOrder(
+                        orderId,
+                        currentUser.getId()
+                )
         );
     }
 
