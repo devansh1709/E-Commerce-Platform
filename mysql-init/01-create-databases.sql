@@ -1,0 +1,5 @@
+CREATE DATABASE IF NOT EXISTS ecomDB;
+CREATE DATABASE IF NOT EXISTS pay;
+
+GRANT ALL PRIVILEGES ON ecomDB.* TO 'shoplane_user'@'%';
+GRANT ALL PRIVILEGES ON pay.* TO 'shoplane_user'@'%';

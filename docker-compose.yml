@@ -1,0 +1,85 @@
+services:
+  mysql:
+    image: mysql:8.4
+    container_name: shoplane-mysql
+    restart: unless-stopped
+
+    environment:
+      MYSQL_DATABASE: ecomDB
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+
+    ports:
+      - "3307:3306"
+
+    volumes:
+      - shoplane-mysql:/var/lib/mysql
+      - ./mysql-init:/docker-entrypoint-initdb.d:ro
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "mysqladmin ping -h localhost -u root -p${MYSQL_ROOT_PASSWORD}"
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+      start_period: 30s
+
+  payment-gateway:
+    build:
+      context: ./Payment-Gateway
+
+    container_name: shoplane-payment-gateway
+    restart: unless-stopped
+
+    ports:
+      - "8081:8081"
+
+    environment:
+      DB_URL: jdbc:mysql://mysql:3306/pay
+      DB_USER: ${MYSQL_USER}
+      DB_PASS: ${MYSQL_PASSWORD}
+      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID}
+      RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET}
+
+    depends_on:
+      mysql:
+        condition: service_healthy
+
+  ecommerce-backend:
+    build:
+      context: ./Ecommerce-backend
+
+    container_name: shoplane-ecommerce-backend
+    restart: unless-stopped
+
+    ports:
+      - "8080:8080"
+
+    environment:
+      DB_URL: jdbc:mysql://mysql:3306/ecomDB
+      DB_USER: ${MYSQL_USER}
+      DB_PASS: ${MYSQL_PASSWORD}
+
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRATION_MS: ${JWT_EXPIRATION_MS}
+
+      PAYMENT_GATEWAY_URL: http://payment-gateway:8081
+
+      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID}
+      RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET}
+
+      MAIL_USERNAME: ${MAIL_USERNAME}
+      MAIL_APP_PASSWORD: ${MAIL_APP_PASSWORD}
+
+    depends_on:
+      mysql:
+        condition: service_healthy
+      payment-gateway:
+        condition: service_started
+
+volumes:
+  shoplane-mysql:
