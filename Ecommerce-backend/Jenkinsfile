@@ -2,12 +2,13 @@ pipeline {
     agent any
 
     environment {
-        IMAGE_NAME = 'devansh1709/shoplane-backend'
+        BACKEND_IMAGE = 'devansh1709/shoplane-backend'
+        PAYMENT_IMAGE = 'devansh1709/shoplane-payment-gateway'
         IMAGE_TAG = "${BUILD_NUMBER}"
     }
 
     stages {
-        stage('Build') {
+        stage('Build Ecommerce Backend') {
             steps {
                 dir('Ecommerce-backend') {
                     sh 'chmod +x mvnw'
@@ -16,7 +17,7 @@ pipeline {
             }
         }
 
-        stage('Test') {
+        stage('Test Ecommerce Backend') {
             steps {
                 dir('Ecommerce-backend') {
                     sh './mvnw test -B'
@@ -30,9 +31,36 @@ pipeline {
             }
         }
 
-        stage('Package') {
+        stage('Build Payment Gateway') {
+            steps {
+                dir('Payment-Gateway') {
+                    sh 'chmod +x mvnw'
+                    sh './mvnw clean compile -B'
+                }
+            }
+        }
+
+        stage('Test Payment Gateway') {
+            steps {
+                dir('Payment-Gateway') {
+                    sh './mvnw test -B'
+                }
+            }
+            post {
+                always {
+                    junit allowEmptyResults: true,
+                          testResults: 'Payment-Gateway/target/surefire-reports/*.xml'
+                }
+            }
+        }
+
+        stage('Package Services') {
             steps {
                 dir('Ecommerce-backend') {
+                    sh './mvnw package -DskipTests -B'
+                }
+
+                dir('Payment-Gateway') {
                     sh './mvnw package -DskipTests -B'
                 }
             }
@@ -40,8 +68,34 @@ pipeline {
 
         stage('Docker Build') {
             steps {
-                dir('Ecommerce-backend') {
-                    sh 'docker build -t ${IMAGE_NAME}:${IMAGE_TAG} -t ${IMAGE_NAME}:latest .'
+                sh '''
+                    docker build \
+                      -t ${BACKEND_IMAGE}:${IMAGE_TAG} \
+                      -t ${BACKEND_IMAGE}:latest \
+                      ./Ecommerce-backend
+
+                    docker build \
+                      -t ${PAYMENT_IMAGE}:${IMAGE_TAG} \
+                      -t ${PAYMENT_IMAGE}:latest \
+                      ./Payment-Gateway
+                '''
+            }
+        }
+
+        stage('Validate Docker Compose') {
+            steps {
+                withEnv([
+                    'MYSQL_USER=jenkins',
+                    'MYSQL_PASSWORD=jenkins',
+                    'MYSQL_ROOT_PASSWORD=jenkins',
+                    'RAZORPAY_KEY_ID=dummy',
+                    'RAZORPAY_KEY_SECRET=dummy',
+                    'JWT_SECRET=dummy',
+                    'JWT_EXPIRATION_MS=86400000',
+                    'MAIL_USERNAME=dummy@example.com',
+                    'MAIL_APP_PASSWORD=dummy'
+                ]) {
+                    sh 'docker compose config --quiet'
                 }
             }
         }
@@ -49,7 +103,7 @@ pipeline {
 
     post {
         success {
-            echo 'CI pipeline completed successfully!'
+            echo 'CI pipeline completed successfully for all services!'
         }
 
         failure {
