@@ -68,17 +68,8 @@ pipeline {
 
         stage('Docker Build') {
             steps {
-                sh '''
-                    docker build \
-                      -t ${BACKEND_IMAGE}:${IMAGE_TAG} \
-                      -t ${BACKEND_IMAGE}:latest \
-                      ./Ecommerce-backend
-
-                    docker build \
-                      -t ${PAYMENT_IMAGE}:${IMAGE_TAG} \
-                      -t ${PAYMENT_IMAGE}:latest \
-                      ./Payment-Gateway
-                '''
+                sh 'docker build -t ${BACKEND_IMAGE}:${IMAGE_TAG} -t ${BACKEND_IMAGE}:latest ./Ecommerce-backend'
+                sh 'docker build -t ${PAYMENT_IMAGE}:${IMAGE_TAG} -t ${PAYMENT_IMAGE}:latest ./Payment-Gateway'
             }
         }
 
