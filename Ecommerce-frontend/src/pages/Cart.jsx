@@ -7,9 +7,29 @@ import {productService, orderService} from "../services/productService";
 
 const formatPrice = (price) => `₹${Number(price).toLocaleString('en-IN')}`
 
+function loadRazorpayScript() {
+  return new Promise((resolve) => {
+    const existingScript = document.querySelector(
+      'script[src="https://checkout.razorpay.com/v1/checkout.js"]'
+    );
+
+    if (existingScript) {
+      resolve(true);
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = "https://checkout.razorpay.com/v1/checkout.js";
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+
+    document.body.appendChild(script);
+  });
+}
+
 export default function Cart() {
   const { cart, totalAmount, clearCart, showToast } = useCart()
-  const { isLoggedIn } = useAuth();
+  const { isLoggedIn, user } = useAuth();
   const navigate = useNavigate();
 
 
@@ -36,7 +56,7 @@ export default function Cart() {
         for (const item of cart) {
 
             const latestProduct =
-                await productService.getProductById(item.id);
+                await productService.getById(item.id);
 
             if (item.quantity > latestProduct.stock) {
 
@@ -49,13 +69,74 @@ export default function Cart() {
 
         }
 
-        await orderService.placeOrder(productQuantities);
+        const scriptLoaded = await loadRazorpayScript();
 
-        showToast("Order placed successfully. Thank you for shopping!");
+if (!scriptLoaded) {
+  showToast("Razorpay checkout could not be loaded.");
+  return;
+}
 
-        clearCart();
+const order = await orderService.placeOrder(productQuantities);
 
-        navigate("/", { replace: true });
+if (!order.razorpayOrderId) {
+  showToast("Payment order could not be created.");
+  return;
+}
+
+const options = {
+  key: import.meta.env.VITE_RAZORPAY_KEY_ID,
+  amount: Math.round(Number(order.totalAmount) * 100),
+  currency: "INR",
+  name: "Shoplane",
+  description: `Payment for order #${order.id}`,
+  order_id: order.razorpayOrderId,
+
+  handler: async function (response) {
+    try {
+      await orderService.confirmPayment(order.id, {
+        razorpayOrderId: response.razorpay_order_id,
+        razorpayPaymentId: response.razorpay_payment_id,
+        razorpaySignature: response.razorpay_signature,
+      });
+
+      showToast("Payment successful. Order confirmed!");
+      clearCart();
+      navigate("/", { replace: true });
+    } catch (error) {
+      console.error("Payment confirmation failed:", error);
+      showToast("Payment completed, but confirmation failed.");
+    }
+  },
+
+  modal: {
+  ondismiss: async function () {
+    try {
+      await orderService.cancelPayment(order.id)
+
+      showToast(
+        "Payment cancelled. Reserved stock has been restored."
+      )
+    } catch (error) {
+      console.error(
+        "Could not cancel pending order:",
+        error
+      )
+    }
+  },
+},
+
+  prefill: {
+    name: user?.name || "",
+    email: user?.email || "",
+  },
+
+  theme: {
+    color: "#3399cc",
+  },
+};
+
+const razorpay = new window.Razorpay(options);
+razorpay.open();    
     } catch (err) {
         showToast(
           err.message || "Failed to place order."

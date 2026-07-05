@@ -1,6 +1,8 @@
 package com.cfs.Ecomm.service;
 
 import com.cfs.Ecomm.dto.OrderDTO;
+import com.cfs.Ecomm.dto.PaymentRequest;
+import com.cfs.Ecomm.dto.PaymentResponse;
 import com.cfs.Ecomm.enums.OrderStatus;
 import com.cfs.Ecomm.exception.BadRequestException;
 import com.cfs.Ecomm.exception.ResourceNotFoundException;
@@ -11,13 +13,22 @@ import com.cfs.Ecomm.model.User;
 import com.cfs.Ecomm.repo.OrderRepository;
 import com.cfs.Ecomm.repo.ProductRepository;
 import com.cfs.Ecomm.repo.UserRepository;
+import com.cfs.Ecomm.client.PaymentGatewayClient;
+import com.cfs.Ecomm.dto.PaymentConfirmationRequest;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+
+import javax.crypto.Mac;
+import javax.crypto.spec.SecretKeySpec;
+import java.nio.charset.StandardCharsets;
+import java.util.HexFormat;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -30,13 +41,27 @@ class OrderServiceTest {
     private ProductRepository productRepository;
     private OrderRepository orderRepository;
     private OrderService orderService;
+    private PaymentGatewayClient paymentGatewayClient;
 
     @BeforeEach
     void setUp() {
         userRepository = mock(UserRepository.class);
         productRepository = mock(ProductRepository.class);
         orderRepository = mock(OrderRepository.class);
-        orderService = new OrderService(userRepository, productRepository, orderRepository);
+        paymentGatewayClient = mock(PaymentGatewayClient.class);
+
+        orderService = new OrderService(
+                userRepository,
+                productRepository,
+                orderRepository,
+                paymentGatewayClient
+        );
+        ReflectionTestUtils.setField(
+                orderService,
+                "razorpayKeySecret",
+                "test-secret"
+        );
+
     }
 
     @Test
@@ -46,19 +71,54 @@ class OrderServiceTest {
 
         when(userRepository.findById(1L)).thenReturn(Optional.of(user));
         when(productRepository.findById(10L)).thenReturn(Optional.of(product));
+
         when(orderRepository.save(any(Orders.class))).thenAnswer(invocation -> {
             Orders order = invocation.getArgument(0);
             order.setId(100L);
             return order;
         });
 
+        PaymentResponse paymentResponse = new PaymentResponse();
+        paymentResponse.setRazorpayOrderId("order_test_123");
+
+        when(paymentGatewayClient.createOrder(any(PaymentRequest.class)))
+                .thenReturn(paymentResponse);
+
         OrderDTO result = orderService.placeOrder(1L, Map.of(10L, 2));
 
         assertThat(result.getTotalAmount()).isEqualByComparingTo("398.00");
         assertThat(result.getStatus()).isEqualTo(OrderStatus.PENDING);
         assertThat(result.getOrderItems()).hasSize(1);
-        assertThat(product.getStock()).isEqualTo(3); // 5 - 2
+        assertThat(product.getStock()).isEqualTo(3);
+
+        assertThat(result.getRazorpayOrderId())
+                .isEqualTo("order_test_123");
+
         verify(productRepository).save(product);
+
+        ArgumentCaptor<PaymentRequest> paymentRequestCaptor =
+                ArgumentCaptor.forClass(PaymentRequest.class);
+
+        verify(paymentGatewayClient)
+                .createOrder(paymentRequestCaptor.capture());
+
+        PaymentRequest capturedRequest = paymentRequestCaptor.getValue();
+
+        assertThat(capturedRequest.getCustomerName())
+                .isEqualTo("Aarav");
+
+        assertThat(capturedRequest.getCustomerEmail())
+                .isEqualTo("aarav@example.com");
+
+
+        assertThat(capturedRequest.getCustomerPhone())
+                .isEqualTo("9876543210");
+
+        assertThat(capturedRequest.getAmount())
+                .isEqualByComparingTo("398.00");
+
+        assertThat(capturedRequest.getCurrency())
+                .isEqualTo("INR");
     }
 
     @Test
@@ -140,11 +200,138 @@ class OrderServiceTest {
         assertThat(result.getFirst().getEmail()).isEqualTo("aarav@example.com");
     }
 
+    @Test
+    void confirmPayment_throwsWhenOrderMissing() {
+        when(orderRepository.findById(999L))
+                .thenReturn(Optional.empty());
+
+        PaymentConfirmationRequest request =
+                new PaymentConfirmationRequest();
+
+        assertThatThrownBy(() ->
+                orderService.confirmPayment(999L, request))
+                .isInstanceOf(ResourceNotFoundException.class)
+                .hasMessageContaining("Order not found");
+
+        verify(orderRepository, never()).save(any());
+    }
+
+    @Test
+    void confirmPayment_marksOrderFailedForInvalidSignature() {
+        User user = user(1L, "Aarav", "aarav@example.com");
+        Orders order = orderWithOneItem(user);
+        order.setRazorpayOrderId("order_test_123");
+
+        when(orderRepository.findById(100L))
+                .thenReturn(Optional.of(order));
+
+        when(orderRepository.save(any(Orders.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        PaymentConfirmationRequest request =
+                new PaymentConfirmationRequest();
+
+        request.setRazorpayOrderId("order_test_123");
+        request.setRazorpayPaymentId("pay_test_456");
+        request.setRazorpaySignature("invalid_signature");
+
+        OrderDTO result =
+                orderService.confirmPayment(100L, request);
+
+        assertThat(result.getStatus())
+                .isEqualTo(OrderStatus.FAILED);
+
+        assertThat(order.getRazorpayPaymentId())
+                .isNull();
+
+        verify(orderRepository).save(order);
+    }
+
+    @Test
+    void confirmPayment_rejectsMismatchedRazorpayOrderId() {
+        User user = user(1L, "Aarav", "aarav@example.com");
+
+        Orders order = orderWithOneItem(user);
+        order.setRazorpayOrderId("order_real_123");
+
+        when(orderRepository.findById(100L))
+                .thenReturn(Optional.of(order));
+
+        PaymentConfirmationRequest request =
+                new PaymentConfirmationRequest();
+
+        request.setRazorpayOrderId("order_different_999");
+        request.setRazorpayPaymentId("pay_test_456");
+        request.setRazorpaySignature("some_signature");
+
+        assertThatThrownBy(() ->
+                orderService.confirmPayment(100L, request))
+                .isInstanceOf(BadRequestException.class)
+                .hasMessageContaining(
+                        "Razorpay order ID does not match"
+                );
+
+        verify(orderRepository, never()).save(any());
+    }
+
+    @Test
+    void confirmPayment_marksOrderPaidForValidSignature() throws Exception {
+        User user = user(1L, "Aarav", "aarav@example.com");
+
+        Orders order = orderWithOneItem(user);
+        order.setRazorpayOrderId("order_test_123");
+
+        when(orderRepository.findById(100L))
+                .thenReturn(Optional.of(order));
+
+        when(orderRepository.save(any(Orders.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        String razorpayOrderId = "order_test_123";
+        String razorpayPaymentId = "pay_test_456";
+
+        String payload =
+                razorpayOrderId + "|" + razorpayPaymentId;
+
+        Mac mac = Mac.getInstance("HmacSHA256");
+
+        mac.init(new SecretKeySpec(
+                "test-secret".getBytes(StandardCharsets.UTF_8),
+                "HmacSHA256"
+        ));
+
+        String validSignature = HexFormat.of()
+                .formatHex(
+                        mac.doFinal(
+                                payload.getBytes(StandardCharsets.UTF_8)
+                        )
+                );
+
+        PaymentConfirmationRequest request =
+                new PaymentConfirmationRequest();
+
+        request.setRazorpayOrderId(razorpayOrderId);
+        request.setRazorpayPaymentId(razorpayPaymentId);
+        request.setRazorpaySignature(validSignature);
+
+        OrderDTO result =
+                orderService.confirmPayment(100L, request);
+
+        assertThat(result.getStatus())
+                .isEqualTo(OrderStatus.PAID);
+
+        assertThat(order.getRazorpayPaymentId())
+                .isEqualTo("pay_test_456");
+
+        verify(orderRepository).save(order);
+    }
+
     private static User user(Long id, String name, String email) {
         User user = new User();
         user.setId(id);
         user.setName(name);
         user.setEmail(email);
+        user.setPhone("9876543210");
         return user;
     }
 

@@ -35,11 +35,17 @@ export function AuthProvider({ children }) {
     return data
   }, [])
 
-  const register = useCallback(async (name, email, password) => {
-    const data = await userService.register({ name, email, password })
-    persist(data)
-    return data
-  }, [])
+  const register = useCallback(async (name, email, phone, password) => {
+  const data = await userService.register({
+    name,
+    email,
+    phone,
+    password
+  })
+
+  persist(data)
+  return data
+}, [])
 
   const logout = useCallback(() => {
     persist(null);

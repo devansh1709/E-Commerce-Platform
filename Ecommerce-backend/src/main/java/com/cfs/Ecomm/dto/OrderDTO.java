@@ -16,7 +16,9 @@ public class OrderDTO {
     private String email;
     private List<OrderItemDTO> orderItems;
 
-    public OrderDTO(Long id, BigDecimal totalAmount, OrderStatus status, LocalDateTime orderDate, String userName, String email, List<OrderItemDTO> orderItems) {
+    private String razorpayOrderId;
+
+    public OrderDTO(Long id, BigDecimal totalAmount, OrderStatus status, LocalDateTime orderDate, String userName, String email, List<OrderItemDTO> orderItems, String razorpayOrderId) {
         this.id = id;
         this.totalAmount = totalAmount;
         this.status = status;
@@ -24,6 +26,7 @@ public class OrderDTO {
         this.userName = userName;
         this.email = email;
         this.orderItems = orderItems;
+        this.razorpayOrderId=razorpayOrderId;
     }
 
     public Long getId() {
@@ -80,5 +83,13 @@ public class OrderDTO {
 
     public void setOrderItems(List<OrderItemDTO> orderItems) {
         this.orderItems = orderItems;
+    }
+
+    public String getRazorpayOrderId() {
+        return razorpayOrderId;
+    }
+
+    public void setRazorpayOrderId(String razorpayOrderId) {
+        this.razorpayOrderId = razorpayOrderId;
     }
 }

@@ -14,6 +14,12 @@ import com.cfs.Ecomm.repo.ProductRepository;
 import com.cfs.Ecomm.repo.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.cfs.Ecomm.client.PaymentGatewayClient;
+import com.cfs.Ecomm.dto.PaymentConfirmationRequest;
+import com.cfs.Ecomm.dto.PaymentRequest;
+import com.cfs.Ecomm.dto.PaymentResponse;
+import com.razorpay.Utils;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -26,16 +32,21 @@ public class OrderService {
     private final UserRepository userRepository;
     private final ProductRepository productRepository;
     private final OrderRepository orderRepository;
+    private final PaymentGatewayClient paymentGatewayClient;
+
+    @Value("${razorpay.key_secret}")
+    private String razorpayKeySecret;
 
     public OrderService(UserRepository userRepository,
                         ProductRepository productRepository,
-                        OrderRepository orderRepository) {
+                        OrderRepository orderRepository,
+                        PaymentGatewayClient paymentGatewayClient) {
 
         this.userRepository = userRepository;
         this.productRepository = productRepository;
         this.orderRepository = orderRepository;
+        this.paymentGatewayClient = paymentGatewayClient;
     }
-
     @Transactional
     public OrderDTO placeOrder(Long userId, Map<Long, Integer> productQuantities) {
 
@@ -63,6 +74,11 @@ public class OrderService {
 
             int quantity = entry.getValue();
 
+            if (quantity <= 0) {
+                throw new BadRequestException("Quantity must be greater than zero");
+            }
+
+
             if (product.getStock() < quantity) {
                 throw new BadRequestException(
                         "Insufficient stock for: " + product.getName()
@@ -73,9 +89,6 @@ public class OrderService {
 
             productRepository.save(product);
 
-            if (quantity <= 0) {
-                throw new BadRequestException("Quantity must be greater than zero");
-            }
 
             total = total.add(
                     product.getPrice().multiply(BigDecimal.valueOf(quantity))
@@ -101,6 +114,30 @@ public class OrderService {
 
         Orders savedOrder = orderRepository.save(order);
 
+        try {
+            PaymentRequest paymentRequest = new PaymentRequest();
+            paymentRequest.setOrderId(savedOrder.getId());
+            paymentRequest.setAmount(savedOrder.getTotalAmount());
+            paymentRequest.setCurrency("INR");
+            paymentRequest.setCustomerName(user.getName());
+            paymentRequest.setCustomerEmail(user.getEmail());
+            paymentRequest.setCustomerPhone(user.getPhone());
+
+            PaymentResponse paymentResponse =
+                    paymentGatewayClient.createOrder(paymentRequest);
+
+            savedOrder.setRazorpayOrderId(paymentResponse.getRazorpayOrderId());
+            savedOrder = orderRepository.save(savedOrder);
+
+        } catch (Exception e) {
+            System.err.println(
+                    "Payment order creation failed for order "
+                            + savedOrder.getId()
+                            + ": "
+                            + e.getMessage()
+            );
+        }
+
         return new OrderDTO(
                 savedOrder.getId(),
                 savedOrder.getTotalAmount(),
@@ -108,8 +145,87 @@ public class OrderService {
                 savedOrder.getOrderDate(),
                 user.getName(),
                 user.getEmail(),
-                orderItemDTOS
+                orderItemDTOS,
+                savedOrder.getRazorpayOrderId()
         );
+    }
+
+
+    @Transactional
+    public OrderDTO confirmPayment(
+            Long orderId,
+            PaymentConfirmationRequest request) {
+
+        Orders order = orderRepository.findById(orderId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Order not found"));
+
+        if (order.getRazorpayOrderId() == null ||
+                !order.getRazorpayOrderId().equals(request.getRazorpayOrderId())) {
+
+            throw new BadRequestException(
+                    "Razorpay order ID does not match this order"
+            );
+        }
+
+        try {
+            String payload =
+                    request.getRazorpayOrderId()
+                            + "|"
+                            + request.getRazorpayPaymentId();
+
+            boolean valid = Utils.verifySignature(
+                    payload,
+                    request.getRazorpaySignature(),
+                    razorpayKeySecret
+            );
+
+            if (valid) {
+                order.setStatus(OrderStatus.PAID);
+                order.setRazorpayPaymentId(
+                        request.getRazorpayPaymentId()
+                );
+            } else {
+                order.setStatus(OrderStatus.FAILED);
+            }
+
+        } catch (Exception e) {
+            order.setStatus(OrderStatus.FAILED);
+        }
+
+        Orders savedOrder = orderRepository.save(order);
+
+        return convertToDTO(savedOrder);
+    }
+
+    @Transactional
+    public OrderDTO cancelPendingOrder(Long orderId) {
+
+        Orders order = orderRepository.findById(orderId)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Order not found"));
+
+        if (order.getStatus() != OrderStatus.PENDING) {
+            throw new BadRequestException(
+                    "Only pending orders can be cancelled"
+            );
+        }
+
+        for (OrderItem item : order.getOrderItems()) {
+            Product product = item.getProduct();
+
+            product.setStock(
+                    product.getStock() + item.getQuantity()
+            );
+
+            productRepository.save(product);
+        }
+
+        order.setStatus(OrderStatus.FAILED);
+
+        Orders savedOrder = orderRepository.save(order);
+
+        return convertToDTO(savedOrder);
     }
 
     public List<OrderDTO> getAllOrders(){
@@ -128,9 +244,10 @@ public class OrderService {
                 orders.getTotalAmount(),
                 orders.getStatus(),
                 orders.getOrderDate(),
-                orders.getUser()!=null?orders.getUser().getName(): "Unknown",
-                orders.getUser()!=null?orders.getUser().getEmail(): "Unknown",
-                orderItems
+                orders.getUser() != null ? orders.getUser().getName() : "Unknown",
+                orders.getUser() != null ? orders.getUser().getEmail() : "Unknown",
+                orderItems,
+                orders.getRazorpayOrderId()
         );
     }
 

@@ -4,7 +4,7 @@ import com.cfs.Ecomm.dto.OrderDTO;
 import com.cfs.Ecomm.model.OrderRequest;
 import com.cfs.Ecomm.model.User;
 import com.cfs.Ecomm.service.OrderService;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.cfs.Ecomm.dto.PaymentConfirmationRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
@@ -45,4 +45,25 @@ public class OrderController {
     public ResponseEntity<List<OrderDTO>> getAllOrders() {
         return ResponseEntity.ok(orderService.getAllOrders());
     }
+
+    @PostMapping("/{orderId}/confirm-payment")
+    public ResponseEntity<OrderDTO> confirmPayment(
+            @PathVariable Long orderId,
+            @RequestBody PaymentConfirmationRequest request) {
+
+        OrderDTO confirmedOrder =
+                orderService.confirmPayment(orderId, request);
+
+        return ResponseEntity.ok(confirmedOrder);
+    }
+
+    @PostMapping("/{orderId}/cancel-payment")
+    public ResponseEntity<OrderDTO> cancelPayment(
+            @PathVariable Long orderId) {
+
+        return ResponseEntity.ok(
+                orderService.cancelPendingOrder(orderId)
+        );
+    }
+    
 }

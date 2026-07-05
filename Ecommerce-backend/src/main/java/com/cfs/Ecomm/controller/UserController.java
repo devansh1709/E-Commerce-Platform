@@ -2,6 +2,7 @@ package com.cfs.Ecomm.controller;
 
 import com.cfs.Ecomm.dto.AuthResponse;
 import com.cfs.Ecomm.dto.UserDTO;
+import com.cfs.Ecomm.model.User;
 import com.cfs.Ecomm.service.UserService;
 import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,15 +23,21 @@ public class UserController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<AuthResponse> registerUser(@Valid @RequestBody UserDTO userDTO) {
-        // Map DTO to entity to avoid exposing User model directly
-        com.cfs.Ecomm.model.User user = new com.cfs.Ecomm.model.User();
+    public ResponseEntity<AuthResponse> registerUser(
+            @Valid @RequestBody UserDTO userDTO) {
+
+        User user = new User();
+
         user.setName(userDTO.getName());
         user.setEmail(userDTO.getEmail());
+        user.setPhone(userDTO.getPhone());
         user.setPassword(userDTO.getPassword());
 
         AuthResponse response = userService.registerUser(user);
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+
+        return ResponseEntity
+                .status(HttpStatus.CREATED)
+                .body(response);
     }
 
     @PostMapping("/login")

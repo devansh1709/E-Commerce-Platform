@@ -30,19 +30,24 @@
     font-weight:600;
 }
 
-.status.pending{
-    background:#fff4ce;
-    color:#b8860b;
+.status.pending {
+    background: #fff4ce;
+    color: #b8860b;
 }
 
-.status.completed{
-    background:#d4edda;
-    color:#155724;
+.status.paid {
+    background: #d4edda;
+    color: #155724;
 }
 
-.status.cancelled{
-    background:#f8d7da;
-    color:#721c24;
+.status.failed {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.status.cancelled {
+    background: #f8d7da;
+    color: #721c24;
 }
 
 .order-table{
@@ -77,4 +82,24 @@
 
 .order-table tbody tr:nth-child(even){
     background:#fafafa;
+}
+
+.order-card {
+    color: #222;
+}
+
+.order-card h2 {
+    color: #222;
+}
+
+.order-card p {
+    color: #555;
+}
+
+.order-table th {
+    color: #555;
+}
+
+.order-table td {
+    color: #333;
 }

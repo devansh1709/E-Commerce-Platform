@@ -9,11 +9,12 @@ export default function Register() {
   const navigate = useNavigate();
 
   const [form, setForm] = useState({
-    name: '',
-    email: '',
-    password: '',
-    confirmPassword: ''
-  });
+  name: '',
+  email: '',
+  phone: '',
+  password: '',
+  confirmPassword: ''
+});
 
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -58,6 +59,7 @@ export default function Register() {
       await register(
         form.name.trim(),
         form.email.trim().toLowerCase(),
+        form.phone.trim(),
         form.password
       );
 
@@ -116,6 +118,23 @@ export default function Register() {
               value={form.email}
               onChange={handleChange}
               placeholder="you@example.com"
+              required
+            />
+          </div>
+
+          <div className="auth-field">
+            <label>Phone Number</label>
+
+            <input
+              type="tel"
+              name="phone"
+              autoComplete="tel"
+              disabled={loading}
+              value={form.phone}
+              onChange={handleChange}
+              placeholder="9876543210"
+              maxLength={10}
+              pattern="[0-9]{10}"
               required
             />
           </div>
