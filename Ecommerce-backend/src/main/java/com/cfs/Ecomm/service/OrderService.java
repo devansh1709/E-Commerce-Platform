@@ -33,20 +33,25 @@ public class OrderService {
     private final ProductRepository productRepository;
     private final OrderRepository orderRepository;
     private final PaymentGatewayClient paymentGatewayClient;
+    private final EmailNotificationService emailNotificationService;
 
     @Value("${razorpay.key_secret}")
     private String razorpayKeySecret;
 
-    public OrderService(UserRepository userRepository,
-                        ProductRepository productRepository,
-                        OrderRepository orderRepository,
-                        PaymentGatewayClient paymentGatewayClient) {
+    public OrderService(
+            UserRepository userRepository,
+            ProductRepository productRepository,
+            OrderRepository orderRepository,
+            PaymentGatewayClient paymentGatewayClient,
+            EmailNotificationService emailNotificationService) {
 
         this.userRepository = userRepository;
         this.productRepository = productRepository;
         this.orderRepository = orderRepository;
         this.paymentGatewayClient = paymentGatewayClient;
+        this.emailNotificationService = emailNotificationService;
     }
+
     @Transactional
     public OrderDTO placeOrder(Long userId, Map<Long, Integer> productQuantities) {
 
@@ -174,11 +179,13 @@ public class OrderService {
                             + "|"
                             + request.getRazorpayPaymentId();
 
+
             boolean valid = Utils.verifySignature(
                     payload,
                     request.getRazorpaySignature(),
                     razorpayKeySecret
             );
+
 
             if (valid) {
                 order.setStatus(OrderStatus.PAID);
@@ -194,6 +201,18 @@ public class OrderService {
         }
 
         Orders savedOrder = orderRepository.save(order);
+
+        if (savedOrder.getStatus() == OrderStatus.PAID) {
+            try {
+                emailNotificationService.sendOrderConfirmation(savedOrder);
+            } catch (Exception e) {
+                System.err.println(
+                        "Order " + savedOrder.getId()
+                                + " was paid, but confirmation email failed: "
+                                + e.getMessage()
+                );
+            }
+        }
 
         return convertToDTO(savedOrder);
     }

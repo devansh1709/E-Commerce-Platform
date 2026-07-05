@@ -42,6 +42,7 @@ class OrderServiceTest {
     private OrderRepository orderRepository;
     private OrderService orderService;
     private PaymentGatewayClient paymentGatewayClient;
+    private EmailNotificationService emailNotificationService;
 
     @BeforeEach
     void setUp() {
@@ -49,12 +50,14 @@ class OrderServiceTest {
         productRepository = mock(ProductRepository.class);
         orderRepository = mock(OrderRepository.class);
         paymentGatewayClient = mock(PaymentGatewayClient.class);
+        emailNotificationService = mock(EmailNotificationService.class);
 
         orderService = new OrderService(
                 userRepository,
                 productRepository,
                 orderRepository,
-                paymentGatewayClient
+                paymentGatewayClient,
+                emailNotificationService
         );
         ReflectionTestUtils.setField(
                 orderService,
