@@ -86,7 +86,7 @@ pipeline {
                     'MAIL_USERNAME=dummy@example.com',
                     'MAIL_APP_PASSWORD=dummy'
                 ]) {
-                    sh 'docker compose config --quiet'
+                    sh 'docker-compose config --quiet'
                 }
             }
         }
