@@ -29,9 +29,7 @@ services:
       start_period: 30s
 
   payment-gateway:
-    build:
-      context: ./Payment-Gateway
-
+    image: devansh1709/shoplane-payment-gateway:latest
     container_name: shoplane-payment-gateway
     restart: unless-stopped
 
@@ -50,14 +48,12 @@ services:
         condition: service_healthy
 
   ecommerce-backend:
-    build:
-      context: ./Ecommerce-backend
-
+    image: devansh1709/shoplane-backend:latest
     container_name: shoplane-ecommerce-backend
     restart: unless-stopped
 
     ports:
-      - "8080:8080"
+      - "8090:8080"
 
     environment:
       DB_URL: jdbc:mysql://mysql:3306/ecomDB
