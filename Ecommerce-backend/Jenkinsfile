@@ -144,6 +144,23 @@ pipeline {
                 }
             }
         }
+
+        stage('Verify Deployment') {
+            steps {
+                retry(5) {
+                    sleep 5
+                    sh '''
+                        curl --fail \
+                          --silent \
+                          --show-error \
+                          http://host.docker.internal:8090/products \
+                          > /dev/null
+                    '''
+                }
+
+                echo 'Deployment verification passed!'
+            }
+        }
     }
 
     post {
