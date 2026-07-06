@@ -100,17 +100,19 @@ pipeline {
                         passwordVariable: 'DOCKERHUB_TOKEN'
                     )
                 ]) {
-                    sh '''
-                        echo "$DOCKERHUB_TOKEN" | docker login \
-                          --username "$DOCKERHUB_USERNAME" \
-                          --password-stdin
+                    retry(3) {
+                        sh '''
+                            echo "$DOCKERHUB_TOKEN" | docker login \
+                              --username "$DOCKERHUB_USERNAME" \
+                              --password-stdin
 
-                        docker push ${BACKEND_IMAGE}:${IMAGE_TAG}
-                        docker push ${BACKEND_IMAGE}:latest
+                            docker push ${BACKEND_IMAGE}:${IMAGE_TAG}
+                            docker push ${BACKEND_IMAGE}:latest
 
-                        docker push ${PAYMENT_IMAGE}:${IMAGE_TAG}
-                        docker push ${PAYMENT_IMAGE}:latest
-                    '''
+                            docker push ${PAYMENT_IMAGE}:${IMAGE_TAG}
+                            docker push ${PAYMENT_IMAGE}:latest
+                        '''
+                    }
                 }
             }
         }
