@@ -28,6 +28,20 @@ services:
       retries: 15
       start_period: 30s
 
+  redis:
+    image: redis:7.4-alpine
+    container_name: shoplane-redis
+    restart: unless-stopped
+
+    ports:
+      - "6379:6379"
+
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   payment-gateway:
     image: devansh1709/shoplane-payment-gateway:latest
     container_name: shoplane-payment-gateway
@@ -60,6 +74,9 @@ services:
       DB_USER: ${MYSQL_USER}
       DB_PASS: ${MYSQL_PASSWORD}
 
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+
       JWT_SECRET: ${JWT_SECRET}
       JWT_EXPIRATION_MS: ${JWT_EXPIRATION_MS}
 
@@ -73,6 +90,8 @@ services:
 
     depends_on:
       mysql:
+        condition: service_healthy
+      redis:
         condition: service_healthy
       payment-gateway:
         condition: service_started

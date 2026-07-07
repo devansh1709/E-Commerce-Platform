@@ -3,8 +3,9 @@ package com.cfs.Ecomm.service;
 import com.cfs.Ecomm.exception.ResourceNotFoundException;
 import com.cfs.Ecomm.model.Product;
 import com.cfs.Ecomm.repo.ProductRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 
 import java.util.List;
 
@@ -17,12 +18,13 @@ public class ProductService {
         this.productRepository = productRepository;
     }
 
-
+    @Cacheable(value = "products", key = "'all'")
     public List<Product> getAllProducts(){
 
         return productRepository.findAll();
     }
 
+    @Cacheable(value = "product", key = "#id")
     public Product getProductById(Long id){
         return productRepository.findById(id)
                 .orElseThrow(() ->
@@ -30,10 +32,12 @@ public class ProductService {
 
     }
 
+    @CacheEvict(value = {"products", "product"}, allEntries = true)
     public Product createProduct(Product product) {
         return productRepository.save(product);
     }
 
+    @CacheEvict(value = {"products", "product"}, allEntries = true)
     public Product updateProduct(Long id, Product product) {
 
         Product existing = getProductById(id);
@@ -47,6 +51,7 @@ public class ProductService {
         return productRepository.save(existing);
     }
 
+    @CacheEvict(value = {"products", "product"}, allEntries = true)
     public Product addProduct(Product product){
 
         return productRepository.save(product);
@@ -63,6 +68,7 @@ public class ProductService {
     }
 
 
+    @CacheEvict(value = {"products", "product"}, allEntries = true)
     public void deleteProduct(Long id) {
 
         Product product = getProductById(id);
