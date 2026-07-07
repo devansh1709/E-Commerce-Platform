@@ -76,5 +76,11 @@ public class ProductService {
         productRepository.delete(product);
     }
 
+    @CacheEvict(value = {"products", "product"}, allEntries = true)
+    public void evictProductCache() {
+        // Method body intentionally empty.
+        // The annotation performs the eviction.
+    }
+
 
 }

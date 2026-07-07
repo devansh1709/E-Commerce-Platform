@@ -44,6 +44,7 @@ class OrderServiceTest {
     private OrderService orderService;
     private PaymentGatewayClient paymentGatewayClient;
     private EmailNotificationService emailNotificationService;
+    private ProductService productService;
 
     @BeforeEach
     void setUp() {
@@ -52,13 +53,15 @@ class OrderServiceTest {
         orderRepository = mock(OrderRepository.class);
         paymentGatewayClient = mock(PaymentGatewayClient.class);
         emailNotificationService = mock(EmailNotificationService.class);
+        productService=mock(ProductService.class);
 
         orderService = new OrderService(
                 userRepository,
                 productRepository,
                 orderRepository,
                 paymentGatewayClient,
-                emailNotificationService
+                emailNotificationService,
+                productService
         );
         ReflectionTestUtils.setField(
                 orderService,
@@ -99,6 +102,7 @@ class OrderServiceTest {
                 .isEqualTo("order_test_123");
 
         verify(productRepository).save(product);
+        verify(productService).evictProductCache();
 
         ArgumentCaptor<PaymentRequest> paymentRequestCaptor =
                 ArgumentCaptor.forClass(PaymentRequest.class);
@@ -387,6 +391,28 @@ class OrderServiceTest {
                 );
 
         verify(orderRepository, never()).save(any());
+    }
+
+    @Test
+    void cancelPendingOrder_restoresStockAndEvictsCache() {
+        User user = user(1L, "Aarav", "aarav@example.com");
+        Orders order = orderWithOneItem(user);
+        Product product = order.getOrderItems().getFirst().getProduct();
+
+        when(orderRepository.findById(100L))
+                .thenReturn(Optional.of(order));
+
+        when(orderRepository.save(any(Orders.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        OrderDTO result = orderService.cancelPendingOrder(100L, 1L);
+
+        assertThat(product.getStock()).isEqualTo(7);
+        assertThat(result.getStatus()).isEqualTo(OrderStatus.FAILED);
+
+        verify(productRepository).save(product);
+        verify(productService).evictProductCache();
+        verify(orderRepository).save(order);
     }
 
     private static User user(Long id, String name, String email) {

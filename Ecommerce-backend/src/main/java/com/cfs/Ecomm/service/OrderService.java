@@ -35,6 +35,7 @@ public class OrderService {
     private final OrderRepository orderRepository;
     private final PaymentGatewayClient paymentGatewayClient;
     private final EmailNotificationService emailNotificationService;
+    private final ProductService productService;
 
     @Value("${razorpay.key_secret}")
     private String razorpayKeySecret;
@@ -44,13 +45,15 @@ public class OrderService {
             ProductRepository productRepository,
             OrderRepository orderRepository,
             PaymentGatewayClient paymentGatewayClient,
-            EmailNotificationService emailNotificationService) {
+            EmailNotificationService emailNotificationService,
+            ProductService productService) {
 
         this.userRepository = userRepository;
         this.productRepository = productRepository;
         this.orderRepository = orderRepository;
         this.paymentGatewayClient = paymentGatewayClient;
-        this.emailNotificationService = emailNotificationService;
+        this.emailNotificationService=emailNotificationService;
+        this.productService = productService;
     }
 
     @Transactional
@@ -114,6 +117,8 @@ public class OrderService {
                     )
             );
         }
+
+        productService.evictProductCache();
 
         order.setTotalAmount(total);
         order.setOrderItems(orderItems);
@@ -259,6 +264,8 @@ public class OrderService {
 
             productRepository.save(product);
         }
+        productService.evictProductCache();
+
 
         order.setStatus(OrderStatus.FAILED);
 
