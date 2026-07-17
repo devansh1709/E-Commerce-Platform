@@ -21,6 +21,10 @@ import com.cfs.Ecomm.dto.PaymentResponse;
 import com.cfs.Ecomm.exception.ForbiddenException;
 import com.razorpay.Utils;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.kafka.core.KafkaTemplate;
+
+import static com.cfs.Ecomm.config.KafkaProducerConfig.ORDER_EVENTS_TOPIC;
+import com.cfs.Ecomm.dto.OrderPlacedEvent;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -36,6 +40,7 @@ public class OrderService {
     private final PaymentGatewayClient paymentGatewayClient;
     private final EmailNotificationService emailNotificationService;
     private final ProductService productService;
+    private final KafkaTemplate<String, OrderPlacedEvent> orderKafkaTemplate;
 
     @Value("${razorpay.key_secret}")
     private String razorpayKeySecret;
@@ -46,7 +51,8 @@ public class OrderService {
             OrderRepository orderRepository,
             PaymentGatewayClient paymentGatewayClient,
             EmailNotificationService emailNotificationService,
-            ProductService productService) {
+            ProductService productService,
+            KafkaTemplate<String, OrderPlacedEvent> orderKafkaTemplate) {
 
         this.userRepository = userRepository;
         this.productRepository = productRepository;
@@ -54,6 +60,7 @@ public class OrderService {
         this.paymentGatewayClient = paymentGatewayClient;
         this.emailNotificationService=emailNotificationService;
         this.productService = productService;
+        this.orderKafkaTemplate = orderKafkaTemplate;
     }
 
     @Transactional
@@ -218,15 +225,7 @@ public class OrderService {
         Orders savedOrder = orderRepository.save(order);
 
         if (savedOrder.getStatus() == OrderStatus.PAID) {
-            try {
-                emailNotificationService.sendOrderConfirmation(savedOrder);
-            } catch (Exception e) {
-                System.err.println(
-                        "Order " + savedOrder.getId()
-                                + " was paid, but confirmation email failed: "
-                                + e.getMessage()
-                );
-            }
+            publishOrderPlacedEvent(savedOrder);
         }
 
         return convertToDTO(savedOrder);
@@ -272,6 +271,49 @@ public class OrderService {
         Orders savedOrder = orderRepository.save(order);
 
         return convertToDTO(savedOrder);
+    }
+
+    /**
+     * Publishes an OrderPlacedEvent to Kafka. NotificationService (a
+     * @KafkaListener in the same app) consumes it asynchronously and
+     * sends the confirmation email - decoupling payment confirmation
+     * from notification dispatch.
+     *
+     * If the broker is unreachable, we fall back to sending the email
+     * synchronously so a paid order never silently loses its
+     * confirmation email just because Kafka is down.
+     */
+    private void publishOrderPlacedEvent(Orders savedOrder) {
+        OrderPlacedEvent event = new OrderPlacedEvent(
+                savedOrder.getId(),
+                savedOrder.getUser().getEmail(),
+                savedOrder.getUser().getName(),
+                savedOrder.getTotalAmount(),
+                savedOrder.getStatus().name(),
+                savedOrder.getOrderDate()
+        );
+
+        orderKafkaTemplate.send(ORDER_EVENTS_TOPIC, savedOrder.getId().toString(), event)
+                .whenComplete((result, ex) -> {
+                    if (ex != null) {
+                        System.err.println(
+                                "Failed to publish order-events for order "
+                                        + savedOrder.getId() + ": " + ex.getMessage()
+                        );
+                    }
+                })
+                .exceptionally(ex -> {
+                    try {
+                        emailNotificationService.sendOrderConfirmation(savedOrder);
+                    } catch (Exception e) {
+                        System.err.println(
+                                "Order " + savedOrder.getId()
+                                        + " was paid, but both Kafka publish and "
+                                        + "fallback email failed: " + e.getMessage()
+                        );
+                    }
+                    return null;
+                });
     }
 
     public List<OrderDTO> getAllOrders(){

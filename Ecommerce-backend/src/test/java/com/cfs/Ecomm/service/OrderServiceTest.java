@@ -16,6 +16,9 @@ import com.cfs.Ecomm.repo.ProductRepository;
 import com.cfs.Ecomm.repo.UserRepository;
 import com.cfs.Ecomm.client.PaymentGatewayClient;
 import com.cfs.Ecomm.dto.PaymentConfirmationRequest;
+import com.cfs.Ecomm.dto.OrderPlacedEvent;
+import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.kafka.support.SendResult;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -45,8 +48,10 @@ class OrderServiceTest {
     private PaymentGatewayClient paymentGatewayClient;
     private EmailNotificationService emailNotificationService;
     private ProductService productService;
+    private KafkaTemplate<String, OrderPlacedEvent> orderKafkaTemplate;
 
     @BeforeEach
+    @SuppressWarnings("unchecked")
     void setUp() {
         userRepository = mock(UserRepository.class);
         productRepository = mock(ProductRepository.class);
@@ -54,6 +59,9 @@ class OrderServiceTest {
         paymentGatewayClient = mock(PaymentGatewayClient.class);
         emailNotificationService = mock(EmailNotificationService.class);
         productService=mock(ProductService.class);
+        orderKafkaTemplate = mock(KafkaTemplate.class);
+        when(orderKafkaTemplate.send(anyString(), any(), any()))
+                .thenReturn(java.util.concurrent.CompletableFuture.completedFuture(mock(SendResult.class)));
 
         orderService = new OrderService(
                 userRepository,
@@ -61,7 +69,8 @@ class OrderServiceTest {
                 orderRepository,
                 paymentGatewayClient,
                 emailNotificationService,
-                productService
+                productService,
+                orderKafkaTemplate
         );
         ReflectionTestUtils.setField(
                 orderService,
@@ -332,6 +341,11 @@ class OrderServiceTest {
                 .isEqualTo("pay_test_456");
 
         verify(orderRepository).save(order);
+        verify(orderKafkaTemplate).send(
+                eq("order-events"),
+                eq("100"),
+                any(OrderPlacedEvent.class)
+        );
     }
 
     @Test
