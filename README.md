@@ -262,3 +262,11 @@ Ecommerce-frontend/
 - [ ] Pagination for product search/listing
 - [ ] Rate limiting on `/users/login` and `/users/register`
 - [ ] Idempotency guard on `NotificationService` — a Kafka redelivery (e.g. after a consumer crash before offset commit) could send a duplicate confirmation email; deduplicating on `orderId` would close that gap.
+
+---
+
+## Author
+
+**Devansh Gupta**  
+B.Tech CSE 2027 · Pranveer Singh Institute of Technology, Kanpur  
+[LinkedIn](https://www.linkedin.com/in/devansh-gupta-720960285/) · [GitHub](https://github.com/devansh1709) · [LeetCode](https://leetcode.com/devansh1709)
